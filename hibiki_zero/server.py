@@ -166,7 +166,7 @@ def main():
         if "share_server_tls_certificate" in inspect.signature(setup_tunnel).parameters:
             tunnel_kwargs["share_server_tls_certificate"] = None
         tunnel = setup_tunnel("localhost", args.port, tunnel_token, None, **tunnel_kwargs)  # type: ignore
-        log("info", f"Tunnel started, if executing on a remote GPU, you can use {tunnel}.")
+        log("info", f"Tunnel started, if executing on a remote GPU, you can use {tunnel}")
         log(
             "info",
             "Note that this tunnel goes through the US and you might experience high latency in Europe.",
