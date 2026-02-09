@@ -13,8 +13,8 @@ import numpy as np
 import torch
 import sentencepiece
 
-from moshi.client_utils import log
 from moshi.models import MimiModel, LMModel, LMGen
+from hibiki_zero.client_utils import log
 from moshi.run_inference import get_condition_tensors
 
 

@@ -13,9 +13,11 @@ from aiohttp import web
 import torch
 from huggingface_hub import hf_hub_download
 
-from moshi.client_utils import log
 from moshi.models import loaders
+from hibiki_zero.client_utils import log
 from hibiki_zero.state import seed_all, ServerState
+
+DEFAULT_REPO: str = "kyutai/hibiki-zero-3b-pytorch-bf16"
 
 
 def main():
@@ -36,7 +38,7 @@ def main():
     parser.add_argument(
         "--hf-repo",
         type=str,
-        default=loaders.DEFAULT_REPO,
+        default=DEFAULT_REPO,
         help="HF repo to look into to load the model, codec and text tokenizer.",
     )
     parser.add_argument(
@@ -57,12 +59,12 @@ def main():
         help="Do not fuse LoRA layers intot Linear layers.",
     )
     parser.add_argument(
-        "--half",
+        "--bf16",
         action="store_const",
-        const=torch.float16,
-        default=torch.bfloat16,
+        const=torch.bfloat16,
+        default=torch.float16,
         dest="dtype",
-        help="Run inference with float16, not bfloat16, better for old GPUs.",
+        help="Run inference with bfloat16 (float16 might be better for old GPUs).",
     )
     parser.add_argument(
         "--ssl",
@@ -146,7 +148,7 @@ def main():
         async def handle_root(_):
             return web.FileResponse(os.path.join(static_path, "index.html"))
 
-        log("info", f"Serving static content from {static_path}")
+        # log("info", "Serving static content from {0}", [(static_path, "yellow")])
         app.router.add_get("/", handle_root)
         app.router.add_static("/", path=static_path, follow_symlinks=True, name="static")
     protocol = "http"
@@ -160,13 +162,14 @@ def main():
         ssl_context.load_cert_chain(certfile=cert_file, keyfile=key_file)
         protocol = "https"
 
-    log("info", f"Access the Web UI directly at {protocol}://{args.host}:{args.port}")
+    local_url: str = f"{protocol}://{args.host}:{args.port}"
+    log("info", "Access the Web UI directly at {0}", [(local_url, "orange")])
     if setup_tunnel is not None:
         tunnel_kwargs = {}
         if "share_server_tls_certificate" in inspect.signature(setup_tunnel).parameters:
             tunnel_kwargs["share_server_tls_certificate"] = None
         tunnel = setup_tunnel("localhost", args.port, tunnel_token, None, **tunnel_kwargs)  # type: ignore
-        log("info", f"Tunnel started, if executing on a remote GPU, you can use {tunnel}")
+        log("info", "Tunnel started, if executing on a remote GPU, you can go at {0}", [(tunnel, "green")])
         log(
             "info",
             "Note that this tunnel goes through the US and you might experience high latency in Europe.",
