@@ -37,8 +37,16 @@ class ServerState:
     lm_gen: LMGen
     lock: asyncio.Lock
 
-    def __init__(self, model_type: str, mimi: MimiModel, text_tokenizer: sentencepiece.SentencePieceProcessor,
-                 lm: LMModel, cfg_coef: float, device: str | torch.device, **kwargs):
+    def __init__(
+        self,
+        model_type: str,
+        mimi: MimiModel,
+        text_tokenizer: sentencepiece.SentencePieceProcessor,
+        lm: LMModel,
+        cfg_coef: float,
+        device: str | torch.device,
+        **kwargs,
+    ):
         self.model_type = model_type
         self.mimi = mimi
         self.text_tokenizer = text_tokenizer
@@ -57,7 +65,7 @@ class ServerState:
             chunk = torch.zeros(1, 1, self.frame_size, dtype=torch.float32, device=self.device)
             codes = self.mimi.encode(chunk)
             for c in range(codes.shape[-1]):
-                tokens = self.lm_gen.step(codes[:, :, c: c + 1])
+                tokens = self.lm_gen.step(codes[:, :, c : c + 1])
                 if tokens is None:
                     continue
                 _ = self.mimi.decode(tokens[:, 1:])
@@ -65,10 +73,7 @@ class ServerState:
         torch.cuda.synchronize()
 
     async def decode_and_send(
-        self,
-        tokens: torch.Tensor,
-        ws: web.WebSocketResponse,
-        opus_writer: sphn.OpusStreamWriter
+        self, tokens: torch.Tensor, ws: web.WebSocketResponse, opus_writer: sphn.OpusStreamWriter
     ):
         assert tokens.shape[1] == self.lm_gen.lm_model.dep_q + 1
         main_pcm = self.mimi.decode(tokens[:, 1:])
@@ -90,7 +95,7 @@ class ServerState:
         self,
         ws: web.WebSocketResponse,
         opus_reader: sphn.OpusStreamReader,
-        opus_writer: sphn.OpusStreamWriter
+        opus_writer: sphn.OpusStreamWriter,
     ):
         all_pcm_data = None
         skip_frames = 1
@@ -125,7 +130,7 @@ class ServerState:
                     while all_pcm_data.shape[-1] >= self.frame_size:
                         be = time.time()
                         chunk = all_pcm_data[: self.frame_size]
-                        all_pcm_data = all_pcm_data[self.frame_size:]
+                        all_pcm_data = all_pcm_data[self.frame_size :]
                         chunk = torch.from_numpy(chunk)
                         chunk = chunk.to(device=self.device)[None, None]
                         codes = self.mimi.encode(chunk)
@@ -137,11 +142,14 @@ class ServerState:
                             self.mimi.reset_streaming()
                             skip_frames -= 1
                         for c in range(codes.shape[-1]):
-                            tokens = self.lm_gen.step(codes[:, :, c: c + 1])
+                            tokens = self.lm_gen.step(codes[:, :, c : c + 1])
                             if tokens is None:
                                 continue
                             await self.decode_and_send(tokens, ws, opus_writer)
-                        log("info", f"frame {frame_idx} handled in {1000 * (time.time() - be):.1f}ms")
+                        log(
+                            "info",
+                            f"frame {frame_idx} handled in {1000 * (time.time() - be):.1f}ms",
+                        )
                         frame_idx += 1
                 else:
                     log("warning", f"unknown message kind {kind}")
