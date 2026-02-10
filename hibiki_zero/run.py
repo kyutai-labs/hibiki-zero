@@ -19,11 +19,20 @@ from huggingface_hub import hf_hub_download
 
 from moshi.models import loaders, LMGen
 from hibiki_zero.client_utils import log, audio_read, stack_and_pad_audio, save_results
-from hibiki_zero.inference import seed_all, ServerState, get_lmgen, add_input_eos, encode_inputs, decode_outputs
+from hibiki_zero.inference import (
+    seed_all,
+    ServerState,
+    get_lmgen,
+    add_input_eos,
+    encode_inputs,
+    decode_outputs,
+)
 
 ROOT_DIR: Path = Path(__file__).parent.parent
 DEFAULT_REPO: str = "kyutai/hibiki-zero-3b-pytorch-bf16"
-DEFAULT_AUDIO_SAMPLES: list[Path] = [ROOT_DIR / "samples" / fname for fname in os.listdir(ROOT_DIR / "samples")]
+DEFAULT_AUDIO_SAMPLES: list[Path] = [
+    ROOT_DIR / "samples" / fname for fname in os.listdir(ROOT_DIR / "samples")
+]
 
 cli_app = typer.Typer()
 
@@ -60,7 +69,10 @@ def serve(
 ):
     # sanity checks
     if not torch.cuda.is_available():
-        log("error", "Found no NVIDIA driver on your system. The server needs to be launched from a machine that has access to a GPU.")
+        log(
+            "error",
+            "Found no NVIDIA driver on your system. The server needs to be launched from a machine that has access to a GPU.",
+        )
         return
 
     seed_all(seed)
@@ -160,9 +172,19 @@ def serve(
 @torch.no_grad()
 def generate(
     files: Annotated[list[Path], typer.Option("--file", help="Input files to translate.")] = None,
-    gen_duration: Annotated[float, typer.Option("--gen-duration", help="Generation duration in seconds.")] = 120,
-    out_dir: Annotated[str, typer.Option("--out_dir", help="Directory where to save the outputs.")] = None,
-    tag: Annotated[str, typer.Option("--tag", help="Tag to add to translation outputs filenames to identify them.")] = None,
+    gen_duration: Annotated[
+        float, typer.Option("--gen-duration", help="Generation duration in seconds.")
+    ] = 120,
+    out_dir: Annotated[
+        str, typer.Option("--out_dir", help="Directory where to save the outputs.")
+    ] = None,
+    tag: Annotated[
+        str,
+        typer.Option("--tag", help="Tag to add to translation outputs filenames to identify them."),
+    ] = None,
+    repeats: Annotated[
+        int, typer.Option("--repeats", help="Do repeats generation for each input file.")
+    ] = 1,
     tokenizer: Annotated[Optional[str], typer.Option(help="Path to a text tokenizer file.")] = None,
     moshi_weight: Annotated[
         Optional[str], typer.Option(help="Path to a Hibiki-Zero checkpoint.")
@@ -183,16 +205,19 @@ def generate(
     ] = None,
     seed: Annotated[int, typer.Option(help="Random seed.")] = 42,
 ):
-
     if not torch.cuda.is_available():
-        log("error", "Found no NVIDIA driver on your system. Generatin needs to be launched from a machine that has access to a GPU.")
+        log(
+            "error",
+            "Found no NVIDIA driver on your system. Generatin needs to be launched from a machine that has access to a GPU.",
+        )
         return
-    
+
     seed_all(seed)
     dtype = torch.bfloat16 if bf16 else torch.float16
-    
+
     log("info", "Starting Hibiki-Zero inference.")
     files = files if files is not None else DEFAULT_AUDIO_SAMPLES
+    files = [fpath for fpath in files for _ in range(repeats)]
     all_files_exist: bool = len(files) > 0
     for fpath in files:
         if not fpath.exists():
@@ -202,6 +227,9 @@ def generate(
         if len(files) == 0:
             log("error", f"No files provided.")
         return
+    log("info", "Audio files to process in a single batch:")
+    for fidx, fpath in enumerate(files):
+        log("info", f"{fidx} : " + "{0}", [(fpath, "grey")])
 
     log("info", "Retrieving the model checkpoint...")
     checkpoint_info = loaders.CheckpointInfo.from_hf_repo(
@@ -221,10 +249,15 @@ def generate(
     lm = checkpoint_info.get_moshi(device=device, dtype=dtype, fuse_lora=fuse_lora)
 
     log("info", "Loading audios...")
-    input_wavs: list[torch.Tensor] = [audio_read(fpath, to_sample_rate=mimi.sample_rate, mono=True)[0] for fpath in files]
+    input_wavs: list[torch.Tensor] = [
+        audio_read(fpath, to_sample_rate=mimi.sample_rate, mono=True)[0] for fpath in files
+    ]
     audio_durations: list[float] = [wav.shape[-1] / mimi.sample_rate for wav in input_wavs]
     if max(audio_durations) > gen_duration:
-        log("error", f"One of the input audios is longer than the gen duration: {max(audio_durations)} > {gen_duration=}")
+        log(
+            "error",
+            f"One of the input audios is longer than the gen duration: {max(audio_durations)} > {gen_duration=}",
+        )
         return
     batch_wavs = stack_and_pad_audio(input_wavs, max_len=int(gen_duration * mimi.sample_rate))
     batch_size: int = batch_wavs.shape[0]
@@ -250,11 +283,20 @@ def generate(
             else:
                 output_text_tokens.append(tokens[:, 0, :])
                 output_audio_tokens.append(tokens[:, 1:, :])
-            log("info", f"Running inference: {step}/{gen_steps} steps = {step/gen_steps:.0%}", end="\r") 
+            log(
+                "info",
+                f"Running inference: {step}/{gen_steps} steps = {step / gen_steps:.0%}",
+                end="\r",
+            )
     gen_time: float = time.time() - start_gen_time
     real_time_factor: float = batch_wavs.shape[-1] / mimi.sample_rate / gen_time
     throughput: float = real_time_factor * batch_size
-    log("info", f"Generated outputs in {real_time_factor:.1f}x real-time (throughput = batch size x real-time factor = {throughput:.1f})")
+    log(
+        "info",
+        "Generated outputs in {0} "
+        + f"(throughput = batch size x real-time factor = {throughput:.1f})",
+        [(f"{real_time_factor:.1f}x real-time", "orange")],
+    )
 
     log("info", "Saving results...")
     batch_text_tokens: torch.Tensor = torch.concat(output_text_tokens, dim=-1)  # B x T

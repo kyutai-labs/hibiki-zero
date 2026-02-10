@@ -7,18 +7,18 @@ import torch
 import sphn
 from IPython.display import Audio, display
 
+COLOR_MAP: dict[str, tuple] = {
+    "blue": (92, 158, 255),
+    "yellow": (255, 255, 85),
+    "red": (255, 85, 85),
+    "orange": (255, 171, 64),
+    "green": (57, 242, 174),
+    "grey": (128, 128, 128),
+}
+
 
 def get_color_code(color_name: str) -> tuple:
-    if color_name == "blue":
-        return (92, 158, 255)
-    elif color_name == "yellow":
-        return (255, 255, 85)
-    elif color_name == "red":
-        return (255, 85, 85)
-    elif color_name == "orange":
-        return (255, 171, 64)
-    elif color_name == "green":
-        return (57, 242, 174)
+    return COLOR_MAP.get(color_name, (255, 255, 255))  # default to white if unknown
 
 
 def colorize_rgb(text: str, rgb: tuple) -> str:
@@ -43,13 +43,17 @@ def make_colored_log(
     return prefix + " " + msg
 
 
-def log(level: str, msg: str, colored_parts: list[tuple[str, str]] | None = None, end: str | None = "\n") -> None:
+def log(
+    level: str, msg: str, colored_parts: list[tuple[str, str]] | None = None, end: str | None = "\n"
+) -> None:
     """Log something with a given level."""
     print(make_colored_log(level, msg, colored_parts), end=end)
 
 
-def audio_read(fpath: Path, to_sample_rate: int | None = None, mono: bool = False) -> tuple[torch.Tensor, int]:
-    """ Read audio fpath and resample at to_sample_rate/transform to mono audio if specified. """
+def audio_read(
+    fpath: Path, to_sample_rate: int | None = None, mono: bool = False
+) -> tuple[torch.Tensor, int]:
+    """Read audio fpath and resample at to_sample_rate/transform to mono audio if specified."""
     wav, sr = sphn.read(fpath)
     if to_sample_rate is not None and sr != to_sample_rate:
         wav = sphn.resample(wav, sr, to_sample_rate)
@@ -59,17 +63,25 @@ def audio_read(fpath: Path, to_sample_rate: int | None = None, mono: bool = Fals
         wav_tensor.unsqueeze(0)
     elif wav_tensor.ndim == 2:
         if wav_tensor.shape[0] > 2:
-            raise ValueError(f"Audio {fpath} has too many channels, got {wav_tensor.shape[0]} but expected 1 or 2.")
+            raise ValueError(
+                f"Audio {fpath} has too many channels, got {wav_tensor.shape[0]} but expected 1 or 2."
+            )
         elif wav_tensor.shape[0] == 2 and mono:
-            log("info", "Audio {0} is stereo, averaging both channels to get a mono audio.", [(fpath, "orange")])
-            wav_tensor = wav_tensor.mean(dim=0, keepdim=True)            
+            log(
+                "info",
+                "Audio {0} is stereo, averaging both channels to get a mono audio.",
+                [(fpath, "grey")],
+            )
+            wav_tensor = wav_tensor.mean(dim=0, keepdim=True)
     elif wav_tensor.ndim >= 3:
-        raise ValueError(f"Audio {fpath} was loaded into a tensor of unsupported shape {wav_tensor.ndim}")
+        raise ValueError(
+            f"Audio {fpath} was loaded into a tensor of unsupported shape {wav_tensor.ndim}"
+        )
     return wav_tensor, sr
 
 
 def stack_and_pad_audio(wavs: list[torch.Tensor], max_len: int | None = None) -> torch.Tensor:
-    """ Stack the given audios on the first dimenion (created), padding them with 0 if needed. """
+    """Stack the given audios on the first dimenion (created), padding them with 0 if needed."""
     actual_max_len = max(wav.shape[-1] for wav in wavs)
     if max_len is None:
         max_len = actual_max_len
@@ -83,7 +95,7 @@ def stack_and_pad_audio(wavs: list[torch.Tensor], max_len: int | None = None) ->
 
 
 def display_audio(wav: torch.Tensor, sample_rate: int):
-    """ Display an audio reader to be used in an interactive notebook. """
+    """Display an audio reader to be used in an interactive notebook."""
     display(Audio(wav.numpy(), rate=sample_rate))
 
 
@@ -95,12 +107,12 @@ def save_results(
     tag: str | None,
 ):
     tag_suffix: str = "" if tag is None else f"_{tag}"
-    for (in_fpath, in_wav), (out_wav, out_text) in zip(inputs, outputs):
+    for file_idx, ((in_fpath, in_wav), (out_wav, out_text)) in enumerate(zip(inputs, outputs)):
         stereo_audio: torch.Tensor = stack_and_pad_audio([in_wav, out_wav]).squeeze()
-        output_stem_fpath: Path = output_dir / f"{in_fpath.stem}{tag_suffix}"
+        output_stem_fpath: Path = output_dir / f"{file_idx}_{in_fpath.stem}{tag_suffix}"
         mono_fpath: Path = output_stem_fpath.parent / f"{output_stem_fpath.stem}_mono.wav"
         stereo_fpath: Path = output_stem_fpath.parent / f"{output_stem_fpath.stem}_stereo.wav"
-        text_fpath: Path = output_stem_fpath.parent / f"{output_stem_fpath.stem}.text"
+        text_fpath: Path = output_stem_fpath.parent / f"{output_stem_fpath.stem}.txt"
         mono_fpath.parent.mkdir(exist_ok=True, parents=True)
         sphn.write_wav(mono_fpath, out_wav.numpy(), sample_rate)
         sphn.write_wav(stereo_fpath, stereo_audio.numpy(), sample_rate)
