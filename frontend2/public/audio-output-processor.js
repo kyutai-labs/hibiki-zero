@@ -91,13 +91,6 @@ class AudioOutputProcessor extends AudioWorkletProcessor {
         );
         debug("Increased maxBuffer to", asMs(this.maxBufferSamples));
       }
-      // this.port.postMessage({
-      //   totalAudioPlayed: this.totalAudioPlayed,
-      //   actualAudioPlayed: this.actualAudioPlayed,
-      //   delay: event.data.micDuration - this.timeInStream,
-      //   minDelay: this.minDelay,
-      //   maxDelay: this.maxDelay,
-      // });
     };
   }
 
