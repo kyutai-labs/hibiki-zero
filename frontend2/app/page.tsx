@@ -81,7 +81,11 @@ export default function Home() {
         // Text data
         const textDecoder = new TextDecoder();
         const text = textDecoder.decode(dataBytes);
-        setWordsReceived((prev) => [...prev, { text, time: Date.now() }]);
+        const TEXT_STREAM_OFFSET_MS = 160; // Hibiki's audio is delayed by two frames compared to the text.
+        setWordsReceived((prev) => [
+          ...prev,
+          { text, time: Date.now() + TEXT_STREAM_OFFSET_MS },
+        ]);
         setStepsSinceLastWord(0);
       } else if (kind === 1) {
         // Audio data

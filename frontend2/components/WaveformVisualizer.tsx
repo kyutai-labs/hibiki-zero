@@ -109,14 +109,14 @@ const WaveformVisualizer = forwardRef<
 
       const render = () => {
         const drawWidth = displaySize.width;
-        const drawHeight = displaySize.height;
+        const drawHeight = displaySize.height - 20;
         const now = Date.now();
 
         // Maintain constant velocity regardless of width
         const effectiveDuration = displayDuration * (drawWidth / width);
 
         // Clear canvas
-        ctx.clearRect(0, 0, drawWidth, drawHeight);
+        ctx.clearRect(0, 0, displaySize.width, displaySize.height);
         if (backgroundColor !== "transparent") {
           ctx.fillStyle = backgroundColor;
           ctx.fillRect(0, 0, drawWidth, drawHeight);
@@ -208,7 +208,7 @@ const WaveformVisualizer = forwardRef<
           const naturalX = (1 - age / effectiveDuration) * drawWidth;
           const textWidth = ctx.measureText(item.text).width;
           const x = Math.max(naturalX, minNextLeftEdge);
-          ctx.fillText(item.text, x, drawHeight - 20);
+          ctx.fillText(item.text, x, drawHeight);
           minNextLeftEdge = x + textWidth + padding;
         }
 
