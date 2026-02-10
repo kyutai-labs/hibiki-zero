@@ -35,6 +35,8 @@ export default function Home() {
           ...prev,
           `Could not connect to the translation server at ${webSocketUrl}`,
         ]);
+        shutdownAudio();
+        setShouldConnect(false);
       },
     },
     shouldConnect,
@@ -97,6 +99,14 @@ export default function Home() {
     handleMessage();
   }, [audioProcessor, lastMessage]);
 
+  useEffect(() => {
+    if (readyState === ReadyState.OPEN && shouldConnect) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setFirstTime(false);
+      setErrors([]);
+    }
+  }, [readyState, shouldConnect]);
+
   const onConnectButtonPress = async () => {
     // If we're not connected yet
     if (!shouldConnect) {
@@ -107,7 +117,6 @@ export default function Home() {
         setShouldConnect(true);
         setWordsReceived([]);
         setStepsSinceLastWord(0);
-        setFirstTime(false);
       }
     } else {
       setShouldConnect(false);
@@ -125,8 +134,8 @@ export default function Home() {
   );
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-background text-textgray text-sm">
-      <main className="flex min-h-screen w-xl max-w-screen flex-col items-center gap-2 py-32 px-4 bg-background sm:items-start">
+    <div className="flex min-h-screen justify-center bg-background text-textgray text-sm">
+      <main className="flex min-h-screen w-xl max-w-screen flex-col items-center gap-4 py-10 px-4 bg-background sm:items-start">
         <h1 className="text-5xl text-green pb-1">Hibiki-Zero</h1>
         <div className="flex flex-col gap-2">
           <p>
@@ -140,34 +149,38 @@ export default function Home() {
           <p>Use headphones for best results.</p>
         </div>
 
-        <button
-          className={clsx(
-            "flex flex-row items-center justify-between gap-2 cursor-pointer w-40 px-2 py-2",
-            "text-xl",
-            "border border-dashed",
-            shouldConnect
-              ? "border-white text-white"
-              : "border-green text-green",
-          )}
-          onClick={() => onConnectButtonPress()}
-        >
-          <span>{shouldConnect ? "Translating" : "Translate"}</span>
-          {shouldConnect && (
-            <Circle
-              size={24}
-              color="var(--red)"
-              fill="var(--red)"
-              className="animate-pulse-recording"
-            />
-          )}
-          {!shouldConnect && (
-            <Circle
-              onClick={() => onConnectButtonPress()}
-              size={24}
-              color="var(--green)"
-            />
-          )}
-        </button>
+        <div className="w-full flex flex-row items-center justify-center">
+          <button
+            className={clsx(
+              "flex flex-row items-center justify-between gap-2 cursor-pointer w-40 px-2 py-2",
+              "text-xl",
+              "border border-dashed",
+              readyState === ReadyState.OPEN
+                ? "border-white text-white"
+                : "border-green text-green",
+            )}
+            onClick={() => onConnectButtonPress()}
+          >
+            <span>
+              {readyState === ReadyState.OPEN ? "Translating" : "Translate"}
+            </span>
+            {readyState === ReadyState.OPEN && (
+              <Circle
+                size={24}
+                color="var(--red)"
+                fill="var(--red)"
+                className="animate-pulse-recording"
+              />
+            )}
+            {!(readyState === ReadyState.OPEN) && (
+              <Circle
+                onClick={() => onConnectButtonPress()}
+                size={24}
+                color="var(--green)"
+              />
+            )}
+          </button>
+        </div>
         {errorsIncludingMic.length > 0 && (
           <div>
             {errorsIncludingMic.map((error, i) => (
@@ -177,7 +190,7 @@ export default function Home() {
             ))}
           </div>
         )}
-        {shouldConnect && audioProcessor.current && (
+        {!firstTime && (
           <div className="w-full flex flex-col gap-4">
             <div className="relative flex flex-col">
               <span className="absolute top-2 left-2 text-textgray text-xs uppercase tracking-wider z-10 font-medium">
@@ -190,7 +203,7 @@ export default function Home() {
                 waveformColor="#ffffff"
                 textColor="#ffffff"
                 displayDuration={4}
-                analyzerNode={audioProcessor.current.inputAnalyser}
+                analyzerNode={audioProcessor.current?.inputAnalyser || null}
                 backgroundColor="transparent"
               />
             </div>
@@ -205,38 +218,34 @@ export default function Home() {
                 waveformColor="#39F2AE"
                 textColor="#39F2AE"
                 displayDuration={4}
-                analyzerNode={audioProcessor.current.outputAnalyser}
+                analyzerNode={audioProcessor.current?.outputAnalyser || null}
                 backgroundColor="transparent"
                 textItems={wordsReceived}
               />
             </div>
           </div>
         )}
-        {!firstTime && shouldConnect && readyState === ReadyState.OPEN && (
+        {!firstTime && (
           <div className="bg-gray my-4 p-4 min-h-40 w-full">
-            {shouldConnect && (
+            {readyState === ReadyState.OPEN && wordsReceived.length === 0 ? (
+              <span className="text-textgray">
+                Speak to see your words translated...
+              </span>
+            ) : (
               <>
-                {wordsReceived.length === 0 ? (
-                  <span className="text-textgray">
-                    Speak to see your words translated...
-                  </span>
-                ) : (
-                  <>
-                    <span>{wordsReceived.map((w) => w.text).join("")}</span>
-                  </>
-                )}
-                <span>
-                  {" "}
-                  {Array.from({
-                    length: Math.floor(stepsSinceLastWord / 25),
-                  }).map((_, i) => (
-                    <span className="text-textgray" key={i}>
-                      &middot;{" "}
-                    </span>
-                  ))}
-                </span>
+                <span>{wordsReceived.map((w) => w.text).join("")}</span>
               </>
             )}
+            <span>
+              {" "}
+              {Array.from({
+                length: Math.floor(stepsSinceLastWord / 25),
+              }).map((_, i) => (
+                <span className="text-textgray" key={i}>
+                  &middot;{" "}
+                </span>
+              ))}
+            </span>
           </div>
         )}
       </main>

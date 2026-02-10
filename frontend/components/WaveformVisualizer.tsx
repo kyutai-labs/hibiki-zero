@@ -18,7 +18,7 @@ export interface WaveformVisualizerRef {
 }
 
 interface WaveformVisualizerProps {
-  analyzerNode: AnalyserNode;
+  analyzerNode: AnalyserNode | null;
   width?: number;
   height?: number;
   waveformColor?: string;
@@ -130,6 +130,10 @@ const WaveformVisualizer = forwardRef<
         ctx.lineTo(drawWidth, drawHeight / 2);
         ctx.stroke();
 
+        if (analyzerNode === null) {
+          return;
+        }
+
         // Draw waveform
         ctx.strokeStyle = waveformColor;
         ctx.lineWidth = 1.5;
@@ -179,7 +183,7 @@ const WaveformVisualizer = forwardRef<
         // Draw text items based on timestamps, pushing overlapping items right
         ctx.font = "20px sans-serif";
         ctx.fillStyle = textColor;
-        ctx.textAlign = "center";
+        ctx.textAlign = "left";
         ctx.textBaseline = "middle";
 
         const padding = 2;
@@ -203,9 +207,9 @@ const WaveformVisualizer = forwardRef<
           const age = (now - item.time) / 1000;
           const naturalX = (1 - age / effectiveDuration) * drawWidth;
           const textWidth = ctx.measureText(item.text).width;
-          const x = Math.max(naturalX, minNextLeftEdge + textWidth / 2);
+          const x = Math.max(naturalX, minNextLeftEdge);
           ctx.fillText(item.text, x, drawHeight - 20);
-          minNextLeftEdge = x + textWidth / 2 + padding;
+          minNextLeftEdge = x + textWidth + padding;
         }
 
         animationFrameRef.current = requestAnimationFrame(render);
@@ -227,6 +231,7 @@ const WaveformVisualizer = forwardRef<
       analyzerNode,
       backgroundColor,
       textItems,
+      width,
     ]);
 
     return (
