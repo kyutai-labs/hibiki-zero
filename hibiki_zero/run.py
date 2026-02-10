@@ -182,6 +182,9 @@ def generate(
         str,
         typer.Option("--tag", help="Tag to add to translation outputs filenames to identify them."),
     ] = None,
+    repeats: Annotated[
+        int, typer.Option("--repeats", help="Do repeats generation for each input file.")
+    ] = 1,
     tokenizer: Annotated[Optional[str], typer.Option(help="Path to a text tokenizer file.")] = None,
     moshi_weight: Annotated[
         Optional[str], typer.Option(help="Path to a Hibiki-Zero checkpoint.")
@@ -214,6 +217,7 @@ def generate(
 
     log("info", "Starting Hibiki-Zero inference.")
     files = files if files is not None else DEFAULT_AUDIO_SAMPLES
+    files = [fpath for fpath in files for _ in range(repeats)]
     all_files_exist: bool = len(files) > 0
     for fpath in files:
         if not fpath.exists():

@@ -107,9 +107,9 @@ def save_results(
     tag: str | None,
 ):
     tag_suffix: str = "" if tag is None else f"_{tag}"
-    for (in_fpath, in_wav), (out_wav, out_text) in zip(inputs, outputs):
+    for file_idx, ((in_fpath, in_wav), (out_wav, out_text)) in enumerate(zip(inputs, outputs)):
         stereo_audio: torch.Tensor = stack_and_pad_audio([in_wav, out_wav]).squeeze()
-        output_stem_fpath: Path = output_dir / f"{in_fpath.stem}{tag_suffix}"
+        output_stem_fpath: Path = output_dir / f"{file_idx}_{in_fpath.stem}{tag_suffix}"
         mono_fpath: Path = output_stem_fpath.parent / f"{output_stem_fpath.stem}_mono.wav"
         stereo_fpath: Path = output_stem_fpath.parent / f"{output_stem_fpath.stem}_stereo.wav"
         text_fpath: Path = output_stem_fpath.parent / f"{output_stem_fpath.stem}.txt"
