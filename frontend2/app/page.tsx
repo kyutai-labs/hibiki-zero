@@ -147,8 +147,8 @@ export default function Home() {
         <h1 className="text-5xl text-green pb-1">Hibiki-Zero</h1>
         <div className="flex flex-col gap-2">
           <p>
-            Kyutai&apos;s real-time speech translation model. TODO link to blog
-            post and code.
+            Kyutai&apos;s real-time speech translation model.
+            {/* TODO link to blog and code */}
           </p>
           <p>
             Hibiki-Zero translates into English from French, Spanish, German,
