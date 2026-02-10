@@ -12,8 +12,9 @@ import sphn
 import numpy as np
 import torch
 import sentencepiece
+import math
 
-from moshi.models import MimiModel, LMModel, LMGen
+from moshi.models import loaders, MimiModel, LMModel, LMGen
 from hibiki_zero.client_utils import log
 from moshi.run_inference import get_condition_tensors
 
@@ -171,3 +172,63 @@ class ServerState:
             await self.recv_loop(ws, opus_reader, opus_writer)
         log("info", "Done with connection.")
         return ws
+
+
+def get_lmgen(lm: LMModel, checkpoint_info: loaders.CheckpointInfo, batch_size: int, cfg_coef: int = 1.0) -> LMGen:
+    condition_tensors = get_condition_tensors(checkpoint_info.model_type, lm, batch_size=batch_size, cfg_coef=cfg_coef)
+    lm_gen = LMGen(lm, cfg_coef=cfg_coef, condition_tensors=condition_tensors, **checkpoint_info.lm_gen_config)
+    return lm_gen
+
+
+def add_input_eos(codes: torch.Tensor, mimi: MimiModel, audio_durations: list[float]) -> torch.Tensor:
+    other_audio_eos_idx: torch.Tensor = torch.tensor(
+        [
+            min(math.ceil(duration * mimi.frame_rate), codes.shape[-1] - 1)
+            for duration in audio_durations
+        ]
+    )[:, None, None].to(codes.device)  # B, 1, 1
+    codes_like_indexes: torch.Tensor = torch.arange(0, codes.shape[-1])[None, None].to(codes.device)  # 1, 1, T
+    codes_with_input_eos: torch.Tensor = torch.where(
+        codes_like_indexes == other_audio_eos_idx,
+        torch.full([1], mimi.cardinality, device=codes.device),
+        codes,
+    )  # B, K, T
+    return codes_with_input_eos
+
+
+def encode_inputs(batch_wavs: torch.Tensor, mimi: MimiModel, lm_gen: LMGen, audio_durations: list[float]) -> tuple[torch.Tensor, torch.Tensor]:
+    frame_size = int(mimi.sample_rate / mimi.frame_rate)
+    with torch.no_grad():
+        codes: torch.Tensor = mimi.encode(batch_wavs.to(lm_gen.lm_model.device))
+        codes_with_input_eos = add_input_eos(codes, mimi, audio_durations)
+        warmup_wav: torch.Tensor = torch.zeros(codes.shape[0], 1, frame_size * lm_gen.max_delay, dtype=torch.float32, device=codes.device)
+        warmup_codes: torch.Tensor = mimi.encode(warmup_wav)
+    return codes_with_input_eos, warmup_codes
+
+
+def decode_outputs(
+        batch_codes: torch.Tensor,
+        batch_text_tokens: torch.Tensor,
+        mimi: MimiModel,
+        text_tokenizer: sentencepiece.SentencePieceProcessor,
+    ) -> list[tuple[torch.Tensor, str]]:
+
+    with torch.no_grad():
+        output_wavs: torch.Tensor = mimi.decode(batch_codes).cpu()
+    
+    outputs: list[tuple[torch.Tensor, str]] = []
+    for output_idx, wav in enumerate(output_wavs):
+        text_tokens: list[int] = batch_text_tokens[output_idx].tolist()
+        if text_tokenizer.eos_id() in text_tokens:
+            eos_idx: int = text_tokens.index(text_tokenizer.eos_id())
+        else:
+            log("warning", f"The model didn't generate output EOS token for entry {output_idx}, truncating audio after the last word generated.")
+            eos_idx: int = len(text_tokens) - 1
+            while eos_idx > 0 and text_tokens[eos_idx] == text_tokenizer.pad_id():
+                eos_idx -= 1
+        text_tokens = [t for t in text_tokens[:eos_idx] if t > text_tokenizer.pad_id()]
+        text: str = text_tokenizer.decode(text_tokens)
+        wav = wav[:, :int(eos_idx * mimi.sample_rate / mimi.frame_rate)]
+        outputs.append((wav, text))
+    
+    return outputs

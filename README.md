@@ -11,5 +11,5 @@ uv run hibiki-zero serve [--gradio-tunnel]
 ## Run inference
 
 ```python
-uv run hibiki-zero generate [--filepath /path/to/my/audio.wav]
+uv run hibiki-zero generate [--file /path/to/my/audio.wav --file /path/to/another/audio.mp3]
 ```

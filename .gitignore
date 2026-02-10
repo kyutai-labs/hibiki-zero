@@ -210,3 +210,6 @@ __marimo__/
 
 # Gradio
 .gradio
+
+# Custom
+translations/

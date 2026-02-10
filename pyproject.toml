@@ -7,6 +7,7 @@ readme = "README.md"
 dependencies = [
     "moshi @ git+https://git@github.com/kyutai-labs/moshi.git#egg=moshi&subdirectory=moshi",
     "gradio>=5.50.0",
+    "jupyter>=1.1.1",
 ]
 
 [tool.setuptools.dynamic]
