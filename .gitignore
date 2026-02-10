@@ -210,3 +210,8 @@ __marimo__/
 
 # Gradio
 .gradio
+
+# Frontend
+frontend/node_modules/
+frontend/dist/
+frontend/.vite/
