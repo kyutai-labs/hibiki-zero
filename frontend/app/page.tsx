@@ -2,9 +2,10 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { useMicrophoneAccess } from "./useMicrophoneAccess";
-import useWebSocket from "react-use-websocket";
+import useWebSocket, { ReadyState } from "react-use-websocket";
 import { useAudioProcessor } from "./useAudioProcessor";
 import { Circle } from "lucide-react";
+import { clsx } from "clsx";
 
 export default function Home() {
   const [shouldConnect, setShouldConnect] = useState(false);
@@ -12,16 +13,32 @@ export default function Home() {
   const [firstTime, setFirstTime] = useState(true);
 
   const [wordsReceived, setWordsReceived] = useState<string[]>([]);
-  const [pausePrediction, setPausePrediction] = useState(0.0);
+  const [errors, setErrors] = useState<string[]>([]);
   const [stepsSinceLastWord, setStepsSinceLastWord] = useState(0);
 
   const webSocketUrl = "ws://localhost:8998/api/chat";
 
   const { sendMessage, readyState, lastMessage } = useWebSocket(
     webSocketUrl,
-    {},
+    {
+      onError: (event) => {
+        console.error("WebSocket error:", event);
+        setErrors((prev) => [
+          ...prev,
+          `Could not connect to the translation server at ${webSocketUrl}`,
+        ]);
+      },
+    },
     shouldConnect,
   );
+
+  // const connectionStatus = {
+  //   [ReadyState.CONNECTING]: "Connecting",
+  //   [ReadyState.OPEN]: "Connection open",
+  //   [ReadyState.CLOSING]: "Connection closing",
+  //   [ReadyState.CLOSED]: "Connection closed",
+  //   [ReadyState.UNINSTANTIATED]: "Connection uninstantiated",
+  // }[readyState];
 
   const onAudioReceivedFromMic = useCallback(
     (opusAudio: Uint8Array) => {
@@ -66,6 +83,7 @@ export default function Home() {
           command: "decode",
           pages: dataBytes,
         });
+        setStepsSinceLastWord((prev) => prev + 1);
       }
     };
     handleMessage();
@@ -86,21 +104,49 @@ export default function Home() {
     } else {
       setShouldConnect(false);
       shutdownAudio();
+      setErrors([]); // Clear previous connection errors
     }
   };
 
+  const errorsIncludingMic = errors.concat(
+    microphoneAccess === "refused"
+      ? [
+          "Microphone access was refused. Please allow access and refresh the page.",
+        ]
+      : [],
+  );
+
   return (
-    <div className="flex min-h-screen items-center justify-center bg-background">
-      <main className="flex min-h-screen w-full max-w-3xl flex-col items-center gap-2 py-32 px-16 bg-background sm:items-start">
-        <h1 className="font-bold text-5xl">Hibiki-Zero</h1>
-        <div
-          className="flex flex-row items-center justify-end gap-2 cursor-pointer"
+    <div className="flex min-h-screen items-center justify-center bg-background text-textgray text-sm">
+      <main className="flex min-h-screen w-xl max-w-screen flex-col items-center gap-2 py-32 px-4 bg-background sm:items-start">
+        <h1 className="text-5xl text-green pb-1">Hibiki-Zero</h1>
+        <div className="flex flex-col gap-2">
+          <p>
+            Kyutai&apos;s real-time speech translation model. TODO link to blog
+            post and code.
+          </p>
+          <p>
+            Hibiki-Zero translates into English from French, Spanish, German,
+            Portugese and Italian.
+          </p>
+          <p>Use headphones for best results.</p>
+        </div>
+
+        <button
+          className={clsx(
+            "flex flex-row items-center justify-between gap-2 cursor-pointer w-40 px-2 py-2",
+            "text-xl",
+            "border border-dashed",
+            shouldConnect
+              ? "border-white text-white"
+              : "border-green text-green",
+          )}
           onClick={() => onConnectButtonPress()}
         >
-          <span>{shouldConnect ? "Transcribing" : "Stopped"}</span>
+          <span>{shouldConnect ? "Translating" : "Translate"}</span>
           {shouldConnect && (
             <Circle
-              size={30}
+              size={24}
               color="var(--red)"
               fill="var(--red)"
               className="animate-pulse-recording"
@@ -109,14 +155,47 @@ export default function Home() {
           {!shouldConnect && (
             <Circle
               onClick={() => onConnectButtonPress()}
-              size={30}
-              color="white"
+              size={24}
+              color="var(--green)"
             />
           )}
-        </div>
-        <div>
-          <p>{wordsReceived.join("")}</p>
-        </div>
+        </button>
+        {errorsIncludingMic.length > 0 && (
+          <div>
+            {errorsIncludingMic.map((error, i) => (
+              <p className="text-red" key={i}>
+                {error}
+              </p>
+            ))}
+          </div>
+        )}
+        {!firstTime && shouldConnect && readyState === ReadyState.OPEN && (
+          <div className="bg-gray my-4 p-4 min-h-40 w-full">
+            {shouldConnect && (
+              <>
+                {wordsReceived.length === 0 ? (
+                  <span className="text-textgray">
+                    Speak to see your words transcribed...
+                  </span>
+                ) : (
+                  <>
+                    <span>{wordsReceived.join("")}</span>
+                  </>
+                )}
+                <span>
+                  {" "}
+                  {Array.from({
+                    length: Math.floor(stepsSinceLastWord / 25),
+                  }).map((_, i) => (
+                    <span className="text-textgray" key={i}>
+                      &middot;{" "}
+                    </span>
+                  ))}
+                </span>
+              </>
+            )}
+          </div>
+        )}
       </main>
     </div>
   );

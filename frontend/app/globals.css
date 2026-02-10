@@ -4,6 +4,7 @@
 :root {
   --green: #39F2AE;
   --offwhite: #EFEFEF;
+  --textgray: #b5bcc5;
   --lightgray: #9d9d9d;
   --gray: #343434;
   --background: #121212;
@@ -11,6 +12,13 @@
   --orange: #f5ab4a;
   /* for errors */
   --red: #f55142;
+
+  font-family:
+    'Satoshi-Variable',
+    system-ui, Avenir, Helvetica, Arial, sans-serif;
+  font-weight: 500;
+  line-height: 1.5;
+  font-size: 1.35rem;
 }
 
 @theme inline {
@@ -36,5 +44,4 @@
 body {
   background: var(--background);
   color: var(--offwhite);
-  font-family: 'Satoshi-Variable', Arial, Helvetica, sans-serif;
 }
