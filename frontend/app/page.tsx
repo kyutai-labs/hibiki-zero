@@ -179,28 +179,32 @@ export default function Home() {
         )}
         {shouldConnect && audioProcessor.current && (
           <div className="w-full flex flex-col gap-4">
-            <div className="flex flex-col gap-1">
-              <span className="text-textgray text-xs">You</span>
+            <div className="relative flex flex-col">
+              <span className="absolute top-2 left-2 text-textgray text-xs uppercase tracking-wider z-10 font-medium">
+                You
+              </span>
               <WaveformVisualizer
                 ref={userVisualizerRef}
                 width={800}
                 height={120}
                 waveformColor="#ffffff"
                 textColor="#ffffff"
-                displayDuration={5}
+                displayDuration={4}
                 analyzerNode={audioProcessor.current.inputAnalyser}
                 backgroundColor="transparent"
               />
             </div>
-            <div className="flex flex-col gap-1">
-              <span className="text-textgray text-xs">Hibiki</span>
+            <div className="relative flex flex-col">
+              <span className="absolute top-2 left-2 text-textgray text-xs uppercase tracking-wider z-10 font-medium">
+                Hibiki-Zero
+              </span>
               <WaveformVisualizer
                 ref={hibikiVisualizerRef}
                 width={800}
                 height={120}
                 waveformColor="#39F2AE"
                 textColor="#39F2AE"
-                displayDuration={5}
+                displayDuration={4}
                 analyzerNode={audioProcessor.current.outputAnalyser}
                 backgroundColor="transparent"
                 textItems={wordsReceived}

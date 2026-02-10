@@ -1,6 +1,12 @@
 "use client";
 
-import { useEffect, useRef, forwardRef, useImperativeHandle } from "react";
+import {
+  useEffect,
+  useRef,
+  forwardRef,
+  useImperativeHandle,
+  useState,
+} from "react";
 
 export interface TextItem {
   text: string;
@@ -12,13 +18,13 @@ export interface WaveformVisualizerRef {
 }
 
 interface WaveformVisualizerProps {
+  analyzerNode: AnalyserNode;
   width?: number;
   height?: number;
   waveformColor?: string;
   textColor?: string;
   displayDuration?: number; // Duration in seconds to display
   sampleRate?: number;
-  analyzerNode?: AnalyserNode | null;
   backgroundColor?: string;
   textItems?: TextItem[];
 }
@@ -29,16 +35,19 @@ interface AmplitudeSnapshot {
   max: number;
 }
 
-const WaveformVisualizer = forwardRef<WaveformVisualizerRef, WaveformVisualizerProps>(
+const WaveformVisualizer = forwardRef<
+  WaveformVisualizerRef,
+  WaveformVisualizerProps
+>(
   (
     {
+      analyzerNode,
       width = 800,
       height = 200,
       waveformColor = "#22c55e",
       textColor = "#ffffff",
       displayDuration = 5,
       sampleRate = 24000,
-      analyzerNode = null,
       backgroundColor = "transparent",
       textItems = [],
     },
@@ -48,10 +57,13 @@ const WaveformVisualizer = forwardRef<WaveformVisualizerRef, WaveformVisualizerP
     const animationFrameRef = useRef<number>(0);
     const audioBufferRef = useRef<Float32Array>(new Float32Array(0));
     const snapshotsRef = useRef<AmplitudeSnapshot[]>([]);
+    const [displaySize, setDisplaySize] = useState({ width, height });
 
     useImperativeHandle(ref, () => ({
       addAudioChunk: (chunk: Float32Array) => {
-        const combined = new Float32Array(audioBufferRef.current.length + chunk.length);
+        const combined = new Float32Array(
+          audioBufferRef.current.length + chunk.length,
+        );
         combined.set(audioBufferRef.current);
         combined.set(chunk, audioBufferRef.current.length);
         audioBufferRef.current = combined;
@@ -68,29 +80,54 @@ const WaveformVisualizer = forwardRef<WaveformVisualizerRef, WaveformVisualizerP
       const canvas = canvasRef.current;
       if (!canvas) return;
 
+      const observer = new ResizeObserver((entries) => {
+        const entry = entries[0];
+        if (entry) {
+          setDisplaySize({
+            width: entry.contentRect.width,
+            height: entry.contentRect.height || height,
+          });
+        }
+      });
+
+      observer.observe(canvas);
+      return () => observer.disconnect();
+    }, [height]);
+
+    useEffect(() => {
+      const canvas = canvasRef.current;
+      if (!canvas) return;
+
       const ctx = canvas.getContext("2d");
       if (!ctx) return;
 
-      // Set canvas size
-      canvas.width = width;
-      canvas.height = height;
+      // Use the actual display size for internal resolution
+      const dpr = typeof window !== "undefined" ? window.devicePixelRatio : 1;
+      canvas.width = displaySize.width * dpr;
+      canvas.height = displaySize.height * dpr;
+      ctx.scale(dpr, dpr);
 
       const render = () => {
+        const drawWidth = displaySize.width;
+        const drawHeight = displaySize.height;
         const now = Date.now();
 
+        // Maintain constant velocity regardless of width
+        const effectiveDuration = displayDuration * (drawWidth / width);
+
         // Clear canvas
-        ctx.clearRect(0, 0, width, height);
+        ctx.clearRect(0, 0, drawWidth, drawHeight);
         if (backgroundColor !== "transparent") {
           ctx.fillStyle = backgroundColor;
-          ctx.fillRect(0, 0, width, height);
+          ctx.fillRect(0, 0, drawWidth, drawHeight);
         }
 
         // Draw center line
         ctx.strokeStyle = "#333";
         ctx.lineWidth = 1;
         ctx.beginPath();
-        ctx.moveTo(0, height / 2);
-        ctx.lineTo(width, height / 2);
+        ctx.moveTo(0, drawHeight / 2);
+        ctx.lineTo(drawWidth, drawHeight / 2);
         ctx.stroke();
 
         // Draw waveform
@@ -98,88 +135,77 @@ const WaveformVisualizer = forwardRef<WaveformVisualizerRef, WaveformVisualizerP
         ctx.lineWidth = 1.5;
         ctx.beginPath();
 
-        if (analyzerNode) {
-          // Sample the analyser and accumulate snapshots over time
-          const bufferLength = analyzerNode.frequencyBinCount;
-          const dataArray = new Uint8Array(bufferLength);
-          analyzerNode.getByteTimeDomainData(dataArray);
+        // Sample the analyser and accumulate snapshots over time
+        const bufferLength = analyzerNode.frequencyBinCount;
+        const dataArray = new Uint8Array(bufferLength);
+        analyzerNode.getByteTimeDomainData(dataArray);
 
-          // Compute min/max amplitude for this frame
-          let min = 1;
-          let max = -1;
-          for (let i = 0; i < bufferLength; i++) {
-            const sample = (dataArray[i] - 128) / 128;
-            if (sample < min) min = sample;
-            if (sample > max) max = sample;
+        // Compute min/max amplitude for this frame
+        let min = 1;
+        let max = -1;
+        for (let i = 0; i < bufferLength; i++) {
+          const sample = (dataArray[i] - 128) / 128;
+          if (sample < min) min = sample;
+          if (sample > max) max = sample;
+        }
+
+        snapshotsRef.current.push({ time: now, min, max });
+
+        // Trim snapshots
+        const cutoff = now - effectiveDuration * 1000;
+        snapshotsRef.current = snapshotsRef.current.filter(
+          (s) => s.time >= cutoff,
+        );
+
+        // Draw accumulated snapshots
+        let firstPoint = true;
+        for (const snap of snapshotsRef.current) {
+          const secondsAgo = (now - snap.time) / 1000;
+          const x = (1 - secondsAgo / effectiveDuration) * drawWidth;
+          const yMin = ((1 - snap.min) / 2) * drawHeight;
+          const yMax = ((1 - snap.max) / 2) * drawHeight;
+
+          if (firstPoint) {
+            ctx.moveTo(x, yMin);
+            firstPoint = false;
+          } else {
+            ctx.lineTo(x, yMin);
           }
-
-          snapshotsRef.current.push({ time: now, min, max });
-
-          // Trim to displayDuration
-          const cutoff = now - displayDuration * 1000;
-          snapshotsRef.current = snapshotsRef.current.filter((s) => s.time >= cutoff);
-
-          // Draw accumulated snapshots
-          let firstPoint = true;
-          for (const snap of snapshotsRef.current) {
-            const age = (now - snap.time) / 1000; // seconds ago
-            const x = (1 - age / displayDuration) * width;
-            const yMin = ((1 - snap.min) / 2) * height;
-            const yMax = ((1 - snap.max) / 2) * height;
-
-            if (firstPoint) {
-              ctx.moveTo(x, yMin);
-              firstPoint = false;
-            } else {
-              ctx.lineTo(x, yMin);
-            }
-            ctx.lineTo(x, yMax);
-          }
-        } else {
-          // Min/max approach for buffered audio (many samples per pixel)
-          const samplesPerPixel = (displayDuration * sampleRate) / width;
-          const audioData = audioBufferRef.current;
-          let firstPoint = true;
-          for (let x = 0; x < width; x++) {
-            const sampleIndex = Math.floor(x * samplesPerPixel);
-            if (sampleIndex >= audioData.length) break;
-
-            const endIndex = Math.min(sampleIndex + Math.ceil(samplesPerPixel), audioData.length);
-
-            let min = 1;
-            let max = -1;
-            for (let i = sampleIndex; i < endIndex; i++) {
-              const sample = audioData[i];
-              if (sample < min) min = sample;
-              if (sample > max) max = sample;
-            }
-
-            const yMin = ((1 - min) / 2) * height;
-            const yMax = ((1 - max) / 2) * height;
-
-            if (firstPoint) {
-              ctx.moveTo(x, yMin);
-              firstPoint = false;
-            } else {
-              ctx.lineTo(x, yMin);
-            }
-            ctx.lineTo(x, yMax);
-          }
+          ctx.lineTo(x, yMax);
         }
 
         ctx.stroke();
 
-        // Draw text items based on timestamps
-        ctx.font = "14px monospace";
+        // Draw text items based on timestamps, pushing overlapping items right
+        ctx.font = "20px sans-serif";
         ctx.fillStyle = textColor;
         ctx.textAlign = "center";
         ctx.textBaseline = "middle";
 
-        for (const item of textItems) {
+        const padding = 2;
+        const sortedItems = [...textItems]
+          .filter((item) => (now - item.time) / 1000 <= effectiveDuration * 2)
+          .sort((a, b) => a.time - b.time);
+
+        // Merge consecutive items that don't start with a space (partial words)
+        const mergedItems: { text: string; time: number }[] = [];
+        for (const item of sortedItems) {
+          if (mergedItems.length > 0 && !item.text.startsWith(" ")) {
+            mergedItems[mergedItems.length - 1].text += item.text;
+          } else {
+            mergedItems.push({ text: item.text, time: item.time });
+          }
+        }
+
+        let minNextLeftEdge = -Infinity;
+
+        for (const item of mergedItems) {
           const age = (now - item.time) / 1000;
-          if (age > displayDuration * 1.1) continue;
-          const x = (1 - age / displayDuration) * width;
-          ctx.fillText(item.text, x, height - 20);
+          const naturalX = (1 - age / effectiveDuration) * drawWidth;
+          const textWidth = ctx.measureText(item.text).width;
+          const x = Math.max(naturalX, minNextLeftEdge + textWidth / 2);
+          ctx.fillText(item.text, x, drawHeight - 20);
+          minNextLeftEdge = x + textWidth / 2 + padding;
         }
 
         animationFrameRef.current = requestAnimationFrame(render);
@@ -192,15 +218,25 @@ const WaveformVisualizer = forwardRef<WaveformVisualizerRef, WaveformVisualizerP
           cancelAnimationFrame(animationFrameRef.current);
         }
       };
-    }, [width, height, waveformColor, textColor, displayDuration, sampleRate, analyzerNode, backgroundColor, textItems]);
+    }, [
+      displaySize,
+      waveformColor,
+      textColor,
+      displayDuration,
+      sampleRate,
+      analyzerNode,
+      backgroundColor,
+      textItems,
+    ]);
 
     return (
       <canvas
         ref={canvasRef}
-        style={{ width: `${width}px`, height: `${height}px` }}
+        className="w-full"
+        style={{ height: `${height}px`, maxWidth: `${width}px` }}
       />
     );
-  }
+  },
 );
 
 WaveformVisualizer.displayName = "WaveformVisualizer";
