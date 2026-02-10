@@ -26,6 +26,7 @@ cli_app = typer.Typer()
 
 
 @cli_app.command()
+@torch.no_grad()
 def serve(
     host: Annotated[str, typer.Option(help="Host to bind the server to.")] = "localhost",
     port: Annotated[int, typer.Option(help="Port to bind the server to.")] = 8998,
@@ -148,6 +149,7 @@ def serve(
 
 
 @cli_app.command()
+@torch.no_grad()
 def generate():
     raise NotImplementedError("WIP")
 

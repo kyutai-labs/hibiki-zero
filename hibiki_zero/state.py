@@ -59,7 +59,6 @@ class ServerState:
         self.mimi.streaming_forever(1)
         self.lm_gen.streaming_forever(1)
 
-    @torch.no_grad()
     def warmup(self):
         for chunk in range(4):
             chunk = torch.zeros(1, 1, self.frame_size, dtype=torch.float32, device=self.device)
@@ -72,7 +71,6 @@ class ServerState:
 
         torch.cuda.synchronize()
 
-    @torch.no_grad()
     async def decode_and_send(
         self, tokens: torch.Tensor, ws: web.WebSocketResponse, opus_writer: sphn.OpusStreamWriter
     ):
@@ -92,7 +90,6 @@ class ServerState:
         elif text_token == 2:
             log("info", f"End Of Sequence token")
 
-    @torch.no_grad()
     async def recv_loop(
         self,
         ws: web.WebSocketResponse,
