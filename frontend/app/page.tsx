@@ -60,9 +60,8 @@ export default function Home() {
     [sendMessage],
   );
 
-  const { setupAudio, shutdownAudio, audioProcessor } = useAudioProcessor(
-    onAudioReceivedFromMic,
-  );
+  const { setupAudio, shutdownAudio, audioProcessor, processingDelaySec } =
+    useAudioProcessor(onAudioReceivedFromMic);
 
   useEffect(() => {
     if (lastMessage === null) return;
@@ -125,10 +124,15 @@ export default function Home() {
     }
   };
 
-  const errorsIncludingMic = errors.concat(
+  const allErrors = errors.concat(
     microphoneAccess === "refused"
       ? [
           "Microphone access was refused. Please allow access and refresh the page.",
+        ]
+      : [],
+    processingDelaySec > 0.5
+      ? [
+          `The model is ${processingDelaySec.toFixed(1)}s behind. Perhaps a network issue?`,
         ]
       : [],
   );
@@ -181,9 +185,9 @@ export default function Home() {
             )}
           </button>
         </div>
-        {errorsIncludingMic.length > 0 && (
+        {allErrors.length > 0 && (
           <div>
-            {errorsIncludingMic.map((error, i) => (
+            {allErrors.map((error, i) => (
               <p className="text-red" key={i}>
                 {error}
               </p>

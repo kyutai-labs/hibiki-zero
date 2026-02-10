@@ -1,4 +1,4 @@
-import { useRef, useCallback } from "react";
+import { useRef, useCallback, useState } from "react";
 import OpusRecorder from "opus-recorder";
 
 const getAudioWorkletNode = async (
@@ -21,12 +21,21 @@ export interface AudioProcessor {
   inputAnalyser: AnalyserNode;
   outputAnalyser: AnalyserNode;
   mediaStreamDestination: MediaStreamAudioDestinationNode;
+  processingDelaySec: number;
 }
+
+type WorkletStats = {
+  totalAudioPlayed: number;
+  actualAudioPlayed: number;
+  minDelay: number;
+  maxDelay: number;
+};
 
 export const useAudioProcessor = (
   onOpusRecorded: (chunk: Uint8Array) => void,
 ) => {
   const audioProcessorRef = useRef<AudioProcessor | null>(null);
+  const [processingDelaySec, setProcessingDelaySec] = useState(0);
 
   const setupAudio = useCallback(
     async (mediaStream: MediaStream) => {
@@ -55,6 +64,13 @@ export const useAudioProcessor = (
 
       const decoder = new Worker("/decoderWorker.min.js");
       let micDuration = 0;
+
+      outputWorklet.port.onmessage = (event: MessageEvent<WorkletStats>) => {
+        const curDelay =
+          event.data.totalAudioPlayed - event.data.actualAudioPlayed;
+        console.log("Received message from output worklet:", curDelay, event);
+        setProcessingDelaySec(curDelay);
+      };
 
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       decoder.onmessage = (event: MessageEvent<any>) => {
@@ -129,6 +145,7 @@ export const useAudioProcessor = (
         inputAnalyser,
         outputAnalyser,
         mediaStreamDestination,
+        processingDelaySec,
       };
       // Resume the audio context if it was suspended
       audioProcessorRef.current.audioContext.resume();
@@ -158,5 +175,6 @@ export const useAudioProcessor = (
     setupAudio,
     shutdownAudio,
     audioProcessor: audioProcessorRef,
+    processingDelaySec,
   };
 };
