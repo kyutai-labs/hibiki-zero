@@ -10,7 +10,9 @@
   },
   "dependencies": {
     "clsx": "^2.1.1",
+    "lucide-react": "^0.563.0",
     "next": "16.1.6",
+    "opus-recorder": "^8.0.5",
     "react": "19.2.3",
     "react-dom": "19.2.3",
     "react-use-websocket": "^4.13.0"
