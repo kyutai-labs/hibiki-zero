@@ -1,20 +1,28 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useMicrophoneAccess } from "./useMicrophoneAccess";
 import useWebSocket, { ReadyState } from "react-use-websocket";
 import { useAudioProcessor } from "./useAudioProcessor";
 import { Circle } from "lucide-react";
 import { clsx } from "clsx";
+import WaveformVisualizer, {
+  WaveformVisualizerRef,
+} from "../components/WaveformVisualizer";
 
 export default function Home() {
   const [shouldConnect, setShouldConnect] = useState(false);
   const { microphoneAccess, askMicrophoneAccess } = useMicrophoneAccess();
   const [firstTime, setFirstTime] = useState(true);
 
-  const [wordsReceived, setWordsReceived] = useState<string[]>([]);
+  const [wordsReceived, setWordsReceived] = useState<
+    { text: string; time: number }[]
+  >([]);
   const [errors, setErrors] = useState<string[]>([]);
   const [stepsSinceLastWord, setStepsSinceLastWord] = useState(0);
+
+  const userVisualizerRef = useRef<WaveformVisualizerRef>(null);
+  const hibikiVisualizerRef = useRef<WaveformVisualizerRef>(null);
 
   const webSocketUrl = "ws://localhost:8998/api/chat";
 
@@ -72,7 +80,7 @@ export default function Home() {
         // Text data
         const textDecoder = new TextDecoder();
         const text = textDecoder.decode(dataBytes);
-        setWordsReceived((prev) => [...prev, text]);
+        setWordsReceived((prev) => [...prev, { text, time: Date.now() }]);
         setStepsSinceLastWord(0);
       } else if (kind === 1) {
         // Audio data
@@ -169,17 +177,48 @@ export default function Home() {
             ))}
           </div>
         )}
+        {shouldConnect && audioProcessor.current && (
+          <div className="w-full flex flex-col gap-4">
+            <div className="flex flex-col gap-1">
+              <span className="text-textgray text-xs">You</span>
+              <WaveformVisualizer
+                ref={userVisualizerRef}
+                width={800}
+                height={120}
+                waveformColor="#ffffff"
+                textColor="#ffffff"
+                displayDuration={5}
+                analyzerNode={audioProcessor.current.inputAnalyser}
+                backgroundColor="transparent"
+              />
+            </div>
+            <div className="flex flex-col gap-1">
+              <span className="text-textgray text-xs">Hibiki</span>
+              <WaveformVisualizer
+                ref={hibikiVisualizerRef}
+                width={800}
+                height={120}
+                waveformColor="#39F2AE"
+                textColor="#39F2AE"
+                displayDuration={5}
+                analyzerNode={audioProcessor.current.outputAnalyser}
+                backgroundColor="transparent"
+                textItems={wordsReceived}
+              />
+            </div>
+          </div>
+        )}
         {!firstTime && shouldConnect && readyState === ReadyState.OPEN && (
           <div className="bg-gray my-4 p-4 min-h-40 w-full">
             {shouldConnect && (
               <>
                 {wordsReceived.length === 0 ? (
                   <span className="text-textgray">
-                    Speak to see your words transcribed...
+                    Speak to see your words translated...
                   </span>
                 ) : (
                   <>
-                    <span>{wordsReceived.join("")}</span>
+                    <span>{wordsReceived.map((w) => w.text).join("")}</span>
                   </>
                 )}
                 <span>
