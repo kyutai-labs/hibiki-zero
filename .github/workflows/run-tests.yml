@@ -31,10 +31,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v4
-    - name: Install Node.js
-      uses: actions/setup-node@v3
-      with:
-        node-version: '18'
+    - uses: pnpm/action-setup@v4
     - name: Install dependencies and build frontend
       run: |
         cd frontend
