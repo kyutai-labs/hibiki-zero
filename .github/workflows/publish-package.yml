@@ -15,6 +15,19 @@ jobs:
     - uses: actions/checkout@v2
     - name: Install uv
       uses: astral-sh/setup-uv@v7
+    - name: Install pnpm
+      uses: pnpm/action-setup@v4
+      with:
+        version: 10
+    - name: Build frontend
+      run: |
+        cd frontend
+        pnpm install
+        STATIC_EXPORT=1 pnpm next build
+        mkdir -p ../hibiki_zero/static
+        cp -r out/* ../hibiki_zero/static/
+    - name: Temporarily unignore static in gitignore
+      run: sed -i 's/^hibiki_zero\/static\/$/# hibiki_zero\/static\//' .gitignore
     - name: Build wheels
       run: uv build
     - name: Publish package distributions to PyPI

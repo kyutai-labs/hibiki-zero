@@ -28,6 +28,10 @@ build-backend = "hatchling.build"
 
 [tool.hatch.build.targets.wheel]
 packages = ["hibiki_zero"]
+artifacts = [
+    "hibiki_zero/samples/**",
+    "hibiki_zero/static/**",
+]
 
 [tool.hatch.metadata]
 allow-direct-references = true
