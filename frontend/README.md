@@ -1,20 +1,26 @@
-# moshi-client
+## Hibiki-Zero frontend
 
-Frontend for the demo.
+First, [install `pnpm`](https://pnpm.io/installation) if you don't have it:
+```bash
+curl -fsSL https://get.pnpm.io/install.sh | sh -
+```
 
-## Run the client
+If you don't have `node` either, get it using:
 
-- Node is required, I recommend using [NVM](https://github.com/nvm-sh/nvm) to help you manage your node version and make sure you're on the recommended version for this project. If you do so run `nvm use`.
-- Generate a public/private key pair, `cert.pem` and `key.pem` and copy it to the at the root of this package
-- Create an env.local file and add your an entry for `VITE_QUEUE_API_PATH` (default should be `/api`)
-- Before running the project for the time or after dependencies update use `npm install`
-- To run the project use `npm run dev`
-- To build the project use `npm run build`
+```bash
+pnpm env use --global lts
+```
 
-## Skipping the queue
-To skip the queue for standalone use, once the project is running go to `/?worker_addr={WORKER_ADDR}` where `WORKER_ADDR` is your worker instance address.
-For example : `https://localhost:5173/?worker_addr=0.0.0.0:8088`
+Then install using `pnpm install`.
 
-## License
+To run in dev mode, starting a development server that will auto-reload if you change the source files:
+```bash
+pnpm dev
+```
 
-The present code is provided under the MIT license.
+To get a static build that you can serve using a webserver:
+```bash
+STATIC_EXPORT=1 pnpm next build
+```
+
+For either of these, you can specify the host using `--host` and the port using `--port`.
