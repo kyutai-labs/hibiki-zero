@@ -20,11 +20,12 @@ from typing_extensions import Annotated
 from hibiki_zero.client_utils import audio_read, log, save_results, stack_and_pad_audio
 from hibiki_zero.inference import ServerState, decode_outputs, encode_inputs, get_lmgen, seed_all
 
-ROOT_DIR: Path = Path(__file__).parent.parent
+MODULE_DIR: Path = Path(__file__).parent
 DEFAULT_REPO: str = "kyutai/hibiki-zero-3b-pytorch-bf16"
 DEFAULT_AUDIO_SAMPLES: list[Path] = [
-    ROOT_DIR / "samples" / fname for fname in os.listdir(ROOT_DIR / "samples")
+    MODULE_DIR / "samples" / fname for fname in os.listdir(MODULE_DIR / "samples")
 ]
+DEFAULT_STATIC_DIR = MODULE_DIR / "static"
 
 cli_app = typer.Typer()
 
@@ -34,7 +35,9 @@ cli_app = typer.Typer()
 def serve(
     host: Annotated[str, typer.Option(help="Host to bind the server to.")] = "localhost",
     port: Annotated[int, typer.Option(help="Port to bind the server to.")] = 8998,
-    static: Annotated[Optional[str], typer.Option(help="Path to static files directory.")] = None,
+    static: Annotated[
+        Path, typer.Option(help="Path to static files directory.")
+    ] = DEFAULT_STATIC_DIR,
     gradio_tunnel: Annotated[bool, typer.Option(help="Activate a gradio tunnel.")] = False,
     gradio_tunnel_token: Annotated[Optional[str], typer.Option(help="Custom tunnel token.")] = None,
     hf_repo: Annotated[
@@ -170,7 +173,9 @@ def generate(
             help="Generation duration in seconds. Should be <=120 seconds for Hibiki-Zero."
         ),
     ] = 120,
-    out_dir: Annotated[Path, typer.Option(help="Directory where to save the outputs.")] = None,
+    out_dir: Annotated[Path, typer.Option(help="Directory where to save the outputs.")] = Path(
+        "./translations"
+    ),
     tag: Annotated[
         str, typer.Option(help="Tag to add to translation outputs filenames to identify them.")
     ] = None,
@@ -291,15 +296,14 @@ def generate(
     batch_text_tokens: torch.Tensor = torch.concat(output_text_tokens, dim=-1)  # B x T
     batch_codes: torch.Tensor = torch.concat(output_audio_tokens, dim=-1)  # B x K x T
     outputs = decode_outputs(batch_codes, batch_text_tokens, mimi, text_tokenizer)
-    output_dir: Path = out_dir if out_dir is not None else ROOT_DIR / "translations"
     save_results(
         inputs=zip(files, input_wavs),
         outputs=outputs,
         sample_rate=mimi.sample_rate,
-        output_dir=output_dir,
+        output_dir=out_dir,
         tag=tag,
     )
-    log("info", "Saved translation results in {0}", [(output_dir, "green")])
+    log("info", "Saved translation results in {0}", [(out_dir, "green")])
 
 
 def main():
