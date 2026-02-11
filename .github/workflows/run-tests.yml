@@ -27,3 +27,16 @@ jobs:
     - name: Install dependencies
       run: uv sync --dev -p ${{ matrix.python-version }}
   
+  build-frontend:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+    - name: Install Node.js
+      uses: actions/setup-node@v3
+      with:
+        node-version: '18'
+    - name: Install dependencies and build frontend
+      run: |
+        cd frontend
+        pnpm install
+        STATIC_EXPORT=1 pnpm next build
