@@ -2,21 +2,22 @@
 # This source code is licensed under the license found in the
 # LICENSE file in the root directory of this source tree.
 
-import time
-import random
-from dataclasses import dataclass
 import asyncio
-import aiohttp
-from aiohttp import web
-import sphn
-import numpy as np
-import torch
-import sentencepiece
 import math
+import random
+import time
+from dataclasses import dataclass
 
-from moshi.models import loaders, MimiModel, LMModel, LMGen
-from hibiki_zero.client_utils import log
+import aiohttp
+import numpy as np
+import sentencepiece
+import sphn
+import torch
+from aiohttp import web
+from moshi.models import LMGen, LMModel, MimiModel, loaders
 from moshi.run_inference import get_condition_tensors
+
+from hibiki_zero.client_utils import log
 
 
 def seed_all(seed):
@@ -89,7 +90,7 @@ class ServerState:
             log("info", f"text token: '{_text}'")
             await ws.send_bytes(msg)
         elif text_token == 2:
-            log("info", f"End Of Sequence token")
+            log("info", "End Of Sequence token")
 
     async def recv_loop(
         self,

@@ -2,31 +2,23 @@
 # This source code is licensed under the license found in the
 # LICENSE file in the root directory of this source tree.
 
-import os
-import sys
 import inspect
-import tarfile
+import os
 import secrets
-from pathlib import Path
-from typing import Optional, List
-from typing_extensions import Annotated
+import tarfile
 import time
+from pathlib import Path
+from typing import Optional
 
 import torch
 import typer
 from aiohttp import web
 from huggingface_hub import hf_hub_download
+from moshi.models import LMGen, loaders
+from typing_extensions import Annotated
 
-from moshi.models import loaders, LMGen
-from hibiki_zero.client_utils import log, audio_read, stack_and_pad_audio, save_results
-from hibiki_zero.inference import (
-    seed_all,
-    ServerState,
-    get_lmgen,
-    add_input_eos,
-    encode_inputs,
-    decode_outputs,
-)
+from hibiki_zero.client_utils import audio_read, log, save_results, stack_and_pad_audio
+from hibiki_zero.inference import ServerState, decode_outputs, encode_inputs, get_lmgen, seed_all
 
 ROOT_DIR: Path = Path(__file__).parent.parent
 DEFAULT_REPO: str = "kyutai/hibiki-zero-3b-pytorch-bf16"
@@ -222,7 +214,7 @@ def generate(
             all_files_exist = False
     if not all_files_exist:
         if len(files) == 0:
-            log("error", f"No files provided.")
+            log("error", "No files provided.")
         return
     log("info", "The following audios will be processed in a single batch:")
     for fidx, fpath in enumerate(files):

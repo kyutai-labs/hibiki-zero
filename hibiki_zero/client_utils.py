@@ -3,8 +3,9 @@
 # LICENSE file in the root directory of this source tree.
 
 from pathlib import Path
-import torch
+
 import sphn
+import torch
 from IPython.display import Audio, display
 
 COLOR_MAP: dict[str, tuple] = {
