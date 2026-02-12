@@ -170,7 +170,7 @@ export default function Home() {
             {/* TODO link to blog and code */}
           </p>
           <p>
-            Hibiki-Zero translates into English from French, Spanish, Portugese and German.
+            Hibiki-Zero translates into English from French, Spanish, Portuguese and German.
           </p>
           <p>Use headphones for a better experience.</p>
         </div>
