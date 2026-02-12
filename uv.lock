@@ -905,7 +905,7 @@ dependencies = [
 requires-dist = [
     { name = "gradio", specifier = ">=5.50.0" },
     { name = "jupyter", specifier = ">=1.1.1" },
-    { name = "moshi", git = "https://github.com/kyutai-labs/moshi.git?subdirectory=moshi&rev=e05bb920f4df9252dfec648a7053a106afb2b561" },
+    { name = "moshi", git = "https://github.com/kyutai-labs/moshi.git?subdirectory=moshi&rev=753a43ee07cc415642a4abdf9b7f9bdc03da49e3" },
 ]
 
 [[package]]
@@ -1491,7 +1491,7 @@ wheels = [
 [[package]]
 name = "moshi"
 version = "0.2.13a1"
-source = { git = "https://github.com/kyutai-labs/moshi.git?subdirectory=moshi&rev=e05bb920f4df9252dfec648a7053a106afb2b561#e05bb920f4df9252dfec648a7053a106afb2b561" }
+source = { git = "https://github.com/kyutai-labs/moshi.git?subdirectory=moshi&rev=753a43ee07cc415642a4abdf9b7f9bdc03da49e3#753a43ee07cc415642a4abdf9b7f9bdc03da49e3" }
 dependencies = [
     { name = "aiohttp" },
     { name = "bitsandbytes", marker = "sys_platform == 'linux'" },

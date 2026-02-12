@@ -21,7 +21,7 @@ from hibiki_zero.client_utils import audio_read, log, save_results, stack_and_pa
 from hibiki_zero.inference import ServerState, decode_outputs, encode_inputs, get_lmgen, seed_all
 
 MODULE_DIR: Path = Path(__file__).parent
-DEFAULT_REPO: str = "kyutai/hibiki-zero-3b-pytorch-bf16"
+DEFAULT_REPO: str = "kyutai/hibiki-zero-3b-pytorch-bf16@23b3e0b41782026c81dd5283a034107b01f9e513"
 DEFAULT_AUDIO_SAMPLES: list[Path] = [
     MODULE_DIR / "samples" / fname for fname in os.listdir(MODULE_DIR / "samples")
 ]
@@ -88,14 +88,22 @@ def serve(
             secrets.token_urlsafe(32) if gradio_tunnel_token is None else gradio_tunnel_token
         )
 
+    hf_repo_parts = hf_repo.split("@")
+    hf_repo_name = hf_repo_parts[0]
+    if len(hf_repo_parts) > 1:
+        revision = hf_repo_parts[1]
+    else:
+        revision = None
+
     log("info", "Retrieving the model checkpoint...")
     checkpoint_info = loaders.CheckpointInfo.from_hf_repo(
-        hf_repo,
+        hf_repo_name,
         model_weight,
         mimi_weight,
         tokenizer,
         lora_weights=lora_weight,
         config_path=config_path,
+        revision=revision,
     )
 
     log("info", "Loading the codec {0}", [(checkpoint_info.mimi_weights, "blue")])

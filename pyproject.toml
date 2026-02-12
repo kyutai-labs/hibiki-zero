@@ -6,7 +6,7 @@ version = "0.0.1"
 readme = "README.md"
 dependencies = [
     # TODO: use the public release of moshi when it's been published
-    "moshi @ git+https://git@github.com/kyutai-labs/moshi.git@e05bb920f4df9252dfec648a7053a106afb2b561#egg=moshi&subdirectory=moshi",
+    "moshi @ git+https://git@github.com/kyutai-labs/moshi.git@753a43ee07cc415642a4abdf9b7f9bdc03da49e3#egg=moshi&subdirectory=moshi",
     "gradio>=5.50.0",
     "jupyter>=1.1.1",
 ]
