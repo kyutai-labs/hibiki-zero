@@ -5,6 +5,7 @@
 import inspect
 import os
 import secrets
+import sys
 import time
 from pathlib import Path
 from typing import Optional
@@ -27,7 +28,7 @@ DEFAULT_STATIC_DIR = MODULE_DIR / "static"
 
 cli_app = typer.Typer()
 
-if os.system == "win32":
+if sys.platform.startswith("win"):
     print("disabling torch.compile() on windows for better compatibility")
     os.environ["NO_TORCH_COMPILE=1"]
 
