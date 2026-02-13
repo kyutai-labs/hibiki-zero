@@ -30,7 +30,7 @@ cli_app = typer.Typer()
 
 if sys.platform.startswith("win"):
     print("disabling torch.compile() on windows for better compatibility")
-    os.environ["NO_TORCH_COMPILE=1"]
+    os.environ["NO_TORCH_COMPILE"] = "1"
 
 
 @cli_app.command()
