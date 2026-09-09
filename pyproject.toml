@@ -41,6 +41,7 @@ allow-direct-references = true
 hibiki-zero = "hibiki_zero.run:cli_app"
 
 [tool.uv]
+exclude-newer = "7 days"
 # System python distribution can have header files missing, so we use only the python
 # distributions provided by uv which have everything included.
 python-preference = "only-managed"
